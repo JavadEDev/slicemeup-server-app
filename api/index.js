@@ -74,14 +74,14 @@ app.get('/pizza-of-the-day', async () => {
     sizes : sizeObj,
   };
 });
-server.get("/api/orders", async function getOrders(req, res) {
+app.get("/api/orders", async function getOrders(req, res) {
     const id = req.query.id;
     const orders = await db.all("SELECT order_id, date, time FROM orders");
   
     res.send(orders);
   });
   
-  server.get("/order", async function getOrders(req, res) {
+  app.get("/order", async function getOrders(req, res) {
     const id = req.query.id;
     const orderPromise = db.get(
       "SELECT order_id, date, time FROM orders WHERE order_id = ?",
@@ -126,7 +126,7 @@ server.get("/api/orders", async function getOrders(req, res) {
     });
   });
   
-  server.post("/order", async function createOrder(req, res) {
+  app.post("/order", async function createOrder(req, res) {
     const { cart } = req.body;
   
     const now = new Date();
@@ -183,7 +183,7 @@ server.get("/api/orders", async function getOrders(req, res) {
     }
   });
   
-  server.get("/past-orders", async function getPastOrders(req, res) {
+  app.get("/past-orders", async function getPastOrders(req, res) {
     await new Promise((resolve) => setTimeout(resolve, 5000));
     try {
       const page = parseInt(req.query.page, 10) || 1;
@@ -200,7 +200,7 @@ server.get("/api/orders", async function getOrders(req, res) {
     }
   });
   
-  server.get("/past-order/:order_id", async function getPastOrder(req, res) {
+  app.get("/past-order/:order_id", async function getPastOrder(req, res) {
     const orderId = req.params.order_id;
   
     try {
@@ -255,7 +255,7 @@ server.get("/api/orders", async function getOrders(req, res) {
     }
   });
   
-  server.post("/contact", async function contactForm(req, res) {
+  app.post("/contact", async function contactForm(req, res) {
     const { name, email, message } = req.body;
   
     if (!name || !email || !message) {
