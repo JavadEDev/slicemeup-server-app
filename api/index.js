@@ -313,9 +313,8 @@ app.get("/api/orders", async function getOrders(req, res) {
     res.send({ success: "Message received" });
   });
   
-  // export default async function handler(req, res) {
-  //   await app.ready()
-  //   app.server.emit('request', req, res)
-  // }
+  export default async function handler(req, res) {
+    await app.ready()
+    app.server.emit('request', req, res)
+  }
 
-  export default app;
