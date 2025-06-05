@@ -5,18 +5,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@libsql/client';
 
+
 const isProd = process.env.NODE_ENV === 'production';
 
 const app = fastify({
-  logger: isProd
-    ? true                       
-    : {                         
-        transport: {
-          target: 'pino-pretty',
-        }
-      }
-});
-
+  logger: true,
+})
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -37,18 +31,21 @@ const db = {
   run: async (sql, args = []) =>  turso.execute({ sql, args }),
 };
 
-app.addHook('preHandler', (req, res, done) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST");
-  res.header("Access-Control-Allow-Headers",  "*");
+// app.addHook('preHandler', (req, res, done) => {
+//   res.header("Access-Control-Allow-Origin", "*");
+//   res.header("Access-Control-Allow-Methods", "GET, POST");
+//   res.header("Access-Control-Allow-Headers",  "*");
 
-const isPreflight = /options/i.test(req.method);
-if (isPreflight) {
-  return res.send();
-}
-done();
+// const isPreflight = /options/i.test(req.method);
+// if (isPreflight) {
+//   return res.send();
+// }
+// done();
+// })
+
+app.get('/', async (req, res) => {
+  return res.status(200).type('text/html').send(html)
 })
-
 app.get('/api', () => ({ status: 'SliceMeUp API is live' }));
 
 // app.get('/pizzas', async () => {
@@ -326,4 +323,7 @@ app.get("/api/orders", async function getOrders(req, res) {
     res.send({ success: "Message received" });
   });
   
-export default app;
+  export default async function handler(req, res) {
+    await app.ready()
+    app.server.emit('request', req, res)
+  }
