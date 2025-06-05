@@ -5,8 +5,17 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@libsql/client';
 
+const isProd = process.env.NODE_ENV === 'production';
+
 const app = fastify({
-  logger: { transport: { target: 'pino-pretty' } },
+  logger: isProd
+    ? true                       
+    : {                         
+        transport: {
+          target: 'pino-pretty',
+          options: { translateTime: 'HH:MM:ss', ignore: 'pid,hostname' }
+        }
+      }
 });
 
 const __filename = fileURLToPath(import.meta.url);
