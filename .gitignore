@@ -15,6 +15,7 @@ dist-ssr
 coverage/
 *.sqlite
 dump.sql
+pizza.sqlite
 
 # Editor directories and files
 .vscode/*
