@@ -12,6 +12,14 @@ const app = fastify({
   }
 });
 
+app.register(fastifyCors, {
+  origin: [
+    'https://pizza-front-sooty.vercel.app', 
+    'http://localhost:5173', 
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -38,30 +46,8 @@ app.get('/', async (req, res) => {
 })
 app.get('/api', () => ({ status: 'SliceMeUp API is live' }));
 
-// app.get('/pizzas', async () => {
-//   const pizzas        = await db.all(
-//     'SELECT pizza_type_id, name, category, ingredients AS description FROM pizza_types'
-//   );
-//   const pizzaSizes    = await db.all(
-//     `SELECT pizza_type_id AS id, size, price FROM pizzas`
-//   );
 
-//   return pizzas.map(p => {
-//     const sizes = pizzaSizes.reduce((acc, cur) => {
-//       if (cur.id === p.pizza_type_id) acc[cur.size] = +cur.price;
-//       return acc;
-//     }, {});
-//     return {
-//       id:          p.pizza_type_id,
-//       name:        p.name,
-//       category:    p.category,
-//       description: p.description,
-//       image:       `/public/pizzas/${p.pizza_type_id}.webp`,
-//       sizes,
-//     };
-//   });
-// });
-app.get("/pizzas", async function getPizzas(req, res) {
+app.get("/api/pizzas", async function getPizzas(req, res) {
   const pizzasPromise = db.all(
     "SELECT pizza_type_id, name, category, ingredients as description FROM pizza_types"
   );
@@ -98,7 +84,7 @@ app.get("/pizzas", async function getPizzas(req, res) {
   res.send(responsePizzas);
 });
 
-app.get('/pizza-of-the-day', async () => {
+app.get('/api/pizza-of-the-day', async () => {
   const pizzas = await db.all(`
     SELECT pizza_type_id AS id, name, category, ingredients AS description
     FROM   pizza_types`);
@@ -115,14 +101,14 @@ app.get('/pizza-of-the-day', async () => {
     sizes : sizeObj,
   };
 });
-app.get("/orders", async function getOrders(req, res) {
+app.get("/api/orders", async function getOrders(req, res) {
     const id = req.query.id;
     const orders = await db.all("SELECT order_id, date, time FROM orders");
   
     res.send(orders);
   });
   
-  app.get("/order", async function getOrders(req, res) {
+  app.get("/api/order", async function getOrders(req, res) {
     const id = req.query.id;
     const orderPromise = db.get(
       "SELECT order_id, date, time FROM orders WHERE order_id = ?",
@@ -167,7 +153,7 @@ app.get("/orders", async function getOrders(req, res) {
     });
   });
   
-  app.post("/order", async function createOrder(req, res) {
+  app.post("/api/order", async function createOrder(req, res) {
     const { cart } = req.body;
   
     const now = new Date();
@@ -224,7 +210,7 @@ app.get("/orders", async function getOrders(req, res) {
     }
   });
   
-  app.get("/past-orders", async function getPastOrders(req, res) {
+  app.get("/api/past-orders", async function getPastOrders(req, res) {
     await new Promise((resolve) => setTimeout(resolve, 5000));
     try {
       const page = parseInt(req.query.page, 10) || 1;
@@ -241,7 +227,7 @@ app.get("/orders", async function getOrders(req, res) {
     }
   });
   
-  app.get("/past-order/:order_id", async function getPastOrder(req, res) {
+  app.get("/api/past-order/:order_id", async function getPastOrder(req, res) {
     const orderId = req.params.order_id;
   
     try {
@@ -296,7 +282,7 @@ app.get("/orders", async function getOrders(req, res) {
     }
   });
   
-  app.post("/contact", async function contactForm(req, res) {
+  app.post("/api/contact", async function contactForm(req, res) {
     const { name, email, message } = req.body;
   
     if (!name || !email || !message) {

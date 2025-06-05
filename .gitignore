@@ -27,3 +27,5 @@ pizza.sqlite
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
