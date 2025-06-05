@@ -37,34 +37,81 @@ const db = {
   run: async (sql, args = []) =>  turso.execute({ sql, args }),
 };
 
+app.addHook('preHandler', (req, res, done) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST");
+  res.header("Access-Control-Allow-Headers",  "*");
 
-app.get('/', () => ({ status: 'SliceMeUp API is live' }));
+const isPreflight = /options/i.test(req.method);
+if (isPreflight) {
+  return res.send();
+}
+done();
+})
 
-app.get('/pizzas', async () => {
-  const pizzas        = await db.all(
-    'SELECT pizza_type_id, name, category, ingredients AS description FROM pizza_types'
+app.get('/api', () => ({ status: 'SliceMeUp API is live' }));
+
+// app.get('/pizzas', async () => {
+//   const pizzas        = await db.all(
+//     'SELECT pizza_type_id, name, category, ingredients AS description FROM pizza_types'
+//   );
+//   const pizzaSizes    = await db.all(
+//     `SELECT pizza_type_id AS id, size, price FROM pizzas`
+//   );
+
+//   return pizzas.map(p => {
+//     const sizes = pizzaSizes.reduce((acc, cur) => {
+//       if (cur.id === p.pizza_type_id) acc[cur.size] = +cur.price;
+//       return acc;
+//     }, {});
+//     return {
+//       id:          p.pizza_type_id,
+//       name:        p.name,
+//       category:    p.category,
+//       description: p.description,
+//       image:       `/public/pizzas/${p.pizza_type_id}.webp`,
+//       sizes,
+//     };
+//   });
+// });
+server.get("/api/pizzas", async function getPizzas(req, res) {
+  const pizzasPromise = db.all(
+    "SELECT pizza_type_id, name, category, ingredients as description FROM pizza_types"
   );
-  const pizzaSizes    = await db.all(
-    `SELECT pizza_type_id AS id, size, price FROM pizzas`
+  const pizzaSizesPromise = db.all(
+    `SELECT 
+      pizza_type_id as id, size, price
+    FROM 
+      pizzas
+  `
   );
 
-  return pizzas.map(p => {
-    const sizes = pizzaSizes.reduce((acc, cur) => {
-      if (cur.id === p.pizza_type_id) acc[cur.size] = +cur.price;
+  const [pizzas, pizzaSizes] = await Promise.all([
+    pizzasPromise,
+    pizzaSizesPromise,
+  ]);
+
+  const responsePizzas = pizzas.map((pizza) => {
+    const sizes = pizzaSizes.reduce((acc, current) => {
+      if (current.id === pizza.pizza_type_id) {
+        acc[current.size] = +current.price;
+      }
       return acc;
     }, {});
     return {
-      id:          p.pizza_type_id,
-      name:        p.name,
-      category:    p.category,
-      description: p.description,
-      image:       `/public/pizzas/${p.pizza_type_id}.webp`,
+      id: pizza.pizza_type_id,
+      name: pizza.name,
+      category: pizza.category,
+      description: pizza.description,
+      image: `/pizzas/${pizza.pizza_type_id}.webp`,
       sizes,
     };
   });
+
+  res.send(responsePizzas);
 });
 
-app.get('/pizza-of-the-day', async () => {
+app.get('/api/pizza-of-the-day', async () => {
   const pizzas = await db.all(`
     SELECT pizza_type_id AS id, name, category, ingredients AS description
     FROM   pizza_types`);
@@ -88,7 +135,7 @@ app.get("/api/orders", async function getOrders(req, res) {
     res.send(orders);
   });
   
-  app.get("/order", async function getOrders(req, res) {
+  app.get("/api/order", async function getOrders(req, res) {
     const id = req.query.id;
     const orderPromise = db.get(
       "SELECT order_id, date, time FROM orders WHERE order_id = ?",
@@ -133,7 +180,7 @@ app.get("/api/orders", async function getOrders(req, res) {
     });
   });
   
-  app.post("/order", async function createOrder(req, res) {
+  app.post("/api/order", async function createOrder(req, res) {
     const { cart } = req.body;
   
     const now = new Date();
@@ -190,7 +237,7 @@ app.get("/api/orders", async function getOrders(req, res) {
     }
   });
   
-  app.get("/past-orders", async function getPastOrders(req, res) {
+  app.get("/api/past-orders", async function getPastOrders(req, res) {
     await new Promise((resolve) => setTimeout(resolve, 5000));
     try {
       const page = parseInt(req.query.page, 10) || 1;
@@ -207,7 +254,7 @@ app.get("/api/orders", async function getOrders(req, res) {
     }
   });
   
-  app.get("/past-order/:order_id", async function getPastOrder(req, res) {
+  app.get("/api/past-order/:order_id", async function getPastOrder(req, res) {
     const orderId = req.params.order_id;
   
     try {
@@ -262,7 +309,7 @@ app.get("/api/orders", async function getOrders(req, res) {
     }
   });
   
-  app.post("/contact", async function contactForm(req, res) {
+  app.post("/api/contact", async function contactForm(req, res) {
     const { name, email, message } = req.body;
   
     if (!name || !email || !message) {
