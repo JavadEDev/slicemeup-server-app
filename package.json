@@ -2,7 +2,6 @@
   "name": "api",
   "version": "1.0.0",
   "main": "server.js",
-  "engines": { "node": ">=20" },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
@@ -18,5 +17,8 @@
     "dotenv": "^16.5.0",
     "fastify": "^4.29.0",
     "pino-pretty": "11.3.0"
-  }
+  },
+  "engines": {
+  "node": ">=20"
+}
 }
