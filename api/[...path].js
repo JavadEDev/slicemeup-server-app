@@ -36,7 +36,7 @@ const db = {
 app.get('/', async (req, res) => {
   return res.status(200).type('text/html').send(html)
 })
-app.get('/api', () => ({ status: 'SliceMeUp API is live' }));
+app.get('/', () => ({ status: 'SliceMeUp API is live' }));
 
 // app.get('/pizzas', async () => {
 //   const pizzas        = await db.all(
