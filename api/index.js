@@ -38,65 +38,65 @@ app.get('/', async (req, res) => {
 })
 app.get('/api', () => ({ status: 'SliceMeUp API is live' }));
 
-app.get('/pizzas', async () => {
-  const pizzas        = await db.all(
-    'SELECT pizza_type_id, name, category, ingredients AS description FROM pizza_types'
-  );
-  const pizzaSizes    = await db.all(
-    `SELECT pizza_type_id AS id, size, price FROM pizzas`
-  );
-
-  return pizzas.map(p => {
-    const sizes = pizzaSizes.reduce((acc, cur) => {
-      if (cur.id === p.pizza_type_id) acc[cur.size] = +cur.price;
-      return acc;
-    }, {});
-    return {
-      id:          p.pizza_type_id,
-      name:        p.name,
-      category:    p.category,
-      description: p.description,
-      image:       `/public/pizzas/${p.pizza_type_id}.webp`,
-      sizes,
-    };
-  });
-});
-// app.get("/api/pizzas", async function getPizzas(req, res) {
-//   const pizzasPromise = db.all(
-//     "SELECT pizza_type_id, name, category, ingredients as description FROM pizza_types"
+// app.get('/pizzas', async () => {
+//   const pizzas        = await db.all(
+//     'SELECT pizza_type_id, name, category, ingredients AS description FROM pizza_types'
 //   );
-//   const pizzaSizesPromise = db.all(
-//     `SELECT 
-//       pizza_type_id as id, size, price
-//     FROM 
-//       pizzas
-//   `
+//   const pizzaSizes    = await db.all(
+//     `SELECT pizza_type_id AS id, size, price FROM pizzas`
 //   );
 
-//   const [pizzas, pizzaSizes] = await Promise.all([
-//     pizzasPromise,
-//     pizzaSizesPromise,
-//   ]);
-
-//   const responsePizzas = pizzas.map((pizza) => {
-//     const sizes = pizzaSizes.reduce((acc, current) => {
-//       if (current.id === pizza.pizza_type_id) {
-//         acc[current.size] = +current.price;
-//       }
+//   return pizzas.map(p => {
+//     const sizes = pizzaSizes.reduce((acc, cur) => {
+//       if (cur.id === p.pizza_type_id) acc[cur.size] = +cur.price;
 //       return acc;
 //     }, {});
 //     return {
-//       id: pizza.pizza_type_id,
-//       name: pizza.name,
-//       category: pizza.category,
-//       description: pizza.description,
-//       image: `/pizzas/${pizza.pizza_type_id}.webp`,
+//       id:          p.pizza_type_id,
+//       name:        p.name,
+//       category:    p.category,
+//       description: p.description,
+//       image:       `/public/pizzas/${p.pizza_type_id}.webp`,
 //       sizes,
 //     };
 //   });
-
-//   res.send(responsePizzas);
 // });
+app.get("/api/pizzas", async function getPizzas(req, res) {
+  const pizzasPromise = db.all(
+    "SELECT pizza_type_id, name, category, ingredients as description FROM pizza_types"
+  );
+  const pizzaSizesPromise = db.all(
+    `SELECT 
+      pizza_type_id as id, size, price
+    FROM 
+      pizzas
+  `
+  );
+
+  const [pizzas, pizzaSizes] = await Promise.all([
+    pizzasPromise,
+    pizzaSizesPromise,
+  ]);
+
+  const responsePizzas = pizzas.map((pizza) => {
+    const sizes = pizzaSizes.reduce((acc, current) => {
+      if (current.id === pizza.pizza_type_id) {
+        acc[current.size] = +current.price;
+      }
+      return acc;
+    }, {});
+    return {
+      id: pizza.pizza_type_id,
+      name: pizza.name,
+      category: pizza.category,
+      description: pizza.description,
+      image: `/pizzas/${pizza.pizza_type_id}.webp`,
+      sizes,
+    };
+  });
+
+  res.send(responsePizzas);
+});
 
 app.get('/api/pizza-of-the-day', async () => {
   const pizzas = await db.all(`
