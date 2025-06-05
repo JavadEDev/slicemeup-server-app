@@ -2,6 +2,7 @@
   "name": "api",
   "version": "1.0.0",
   "main": "server.js",
+  "engines": { "node": ">=20" },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
@@ -16,9 +17,6 @@
     "@libsql/client": "^0.15.8",
     "dotenv": "^16.5.0",
     "fastify": "^4.29.0",
-    "pino-pretty": "11.3.0",
-    "promised-sqlite3": "^2.1.0",
-    "sqlite": "5.1.1",
-    "sqlite3": "^5.1.7"
+    "pino-pretty": "11.3.0"
   }
 }
