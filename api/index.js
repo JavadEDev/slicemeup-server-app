@@ -13,10 +13,10 @@ const app = fastify({
     : {                         
         transport: {
           target: 'pino-pretty',
-          options: { translateTime: 'HH:MM:ss', ignore: 'pid,hostname' }
         }
       }
 });
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
