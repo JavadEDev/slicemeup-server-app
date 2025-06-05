@@ -31,46 +31,23 @@ const db = {
   run: async (sql, args = []) =>  turso.execute({ sql, args }),
 };
 
-// app.addHook('preHandler', (req, res, done) => {
-//   res.header("Access-Control-Allow-Origin", "*");
-//   res.header("Access-Control-Allow-Methods", "GET, POST");
-//   res.header("Access-Control-Allow-Headers",  "*");
+app.addHook('preHandler', (req, res, done) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST");
+  res.header("Access-Control-Allow-Headers",  "*");
 
-// const isPreflight = /options/i.test(req.method);
-// if (isPreflight) {
-//   return res.send();
-// }
-// done();
-// })
+const isPreflight = /options/i.test(req.method);
+if (isPreflight) {
+  return res.send();
+}
+done();
+})
 
 app.get('/', async (req, res) => {
   return res.status(200).type('text/html').send(html)
 })
 app.get('/api', () => ({ status: 'SliceMeUp API is live' }));
 
-// app.get('/pizzas', async () => {
-//   const pizzas        = await db.all(
-//     'SELECT pizza_type_id, name, category, ingredients AS description FROM pizza_types'
-//   );
-//   const pizzaSizes    = await db.all(
-//     `SELECT pizza_type_id AS id, size, price FROM pizzas`
-//   );
-
-//   return pizzas.map(p => {
-//     const sizes = pizzaSizes.reduce((acc, cur) => {
-//       if (cur.id === p.pizza_type_id) acc[cur.size] = +cur.price;
-//       return acc;
-//     }, {});
-//     return {
-//       id:          p.pizza_type_id,
-//       name:        p.name,
-//       category:    p.category,
-//       description: p.description,
-//       image:       `/public/pizzas/${p.pizza_type_id}.webp`,
-//       sizes,
-//     };
-//   });
-// });
 app.get("/api/pizzas", async function getPizzas(req, res) {
   const pizzasPromise = db.all(
     "SELECT pizza_type_id, name, category, ingredients as description FROM pizza_types"
