@@ -16,8 +16,7 @@ const app = fastify({
         }
       }
 });
-const PORT = process.env.PORT || 3000;
-const HOST = ("RENDER" in process.env) ? `0.0.0.0` : `localhost`;
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -327,14 +326,4 @@ app.get("/api/orders", async function getOrders(req, res) {
     res.send({ success: "Message received" });
   });
   
-  const start = async () => {
-    try {
-      await server.listen({ host: HOST, port: PORT });
-      console.log(`Server listening on port ${PORT}`);
-    } catch (err) {
-      console.error(err);
-      process.exit(1);
-    }
-  };
-  
-  start();
+export default app;
