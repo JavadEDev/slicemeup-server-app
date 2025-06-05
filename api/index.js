@@ -74,7 +74,7 @@ app.get('/api', () => ({ status: 'SliceMeUp API is live' }));
 //     };
 //   });
 // });
-server.get("/api/pizzas", async function getPizzas(req, res) {
+app.get("/api/pizzas", async function getPizzas(req, res) {
   const pizzasPromise = db.all(
     "SELECT pizza_type_id, name, category, ingredients as description FROM pizza_types"
   );
