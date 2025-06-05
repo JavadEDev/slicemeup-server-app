@@ -1,6 +1,5 @@
 import 'dotenv/config';
 import fastify from 'fastify';
-import vercel from '@fastify/vercel';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -9,7 +8,6 @@ import { createClient } from '@libsql/client';
 const app = fastify({
   logger: { transport: { target: 'pino-pretty' } },
 });
-app.register(vercel);                
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
