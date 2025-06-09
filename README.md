@@ -1,4 +1,4 @@
-# �� SliceMeUp - Modern Pizza Ordering System
+# SliceMeUp - Modern Pizza Ordering System
 
 SliceMeUp is a modern, full-stack pizza ordering application that provides a seamless experience for customers to browse, order, and track their pizza deliveries. Built with performance and user experience in mind, this application leverages modern web technologies to deliver a fast and reliable service.
 
