@@ -67,7 +67,7 @@ npm run dev
 
 The application will be available at `http://localhost:5173`
 
-## �� API Endpoints
+## API Endpoints
 
 ### Pizza Management
 - `GET /api/pizzas` - Get all available pizzas with sizes and prices
