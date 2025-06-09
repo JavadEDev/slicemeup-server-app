@@ -176,140 +176,198 @@ app.get("/api/orders", async function getOrders(req, res) {
     });
   });
   
-  app.post("/api/order", async function createOrder(req, res) {
-    const { cart } = req.body;
+//   app.post("/api/order", async function createOrder(req, res) {
+//     const { cart } = req.body;
   
-    const now = new Date();
-    const time = now.toLocaleTimeString("en-US", { hour12: false });
-    const date = now.toISOString().split("T")[0];
+//     const now = new Date();
+//     const time = now.toLocaleTimeString("en-US", { hour12: false });
+//     const date = now.toISOString().split("T")[0];
   
-    if (!cart || !Array.isArray(cart) || cart.length === 0) {
-      res.status(400).send({ error: "Invalid order data" });
-      return;
-    }
+//     if (!cart || !Array.isArray(cart) || cart.length === 0) {
+//       res.status(400).send({ error: "Invalid order data" });
+//       return;
+//     }
 
-    let transactionStarted = false;
-    try {
-      // Start transaction
-      await db.run("BEGIN TRANSACTION");
-      transactionStarted = true;
-      req.log.info("Transaction started successfully");
+//     let transactionStarted = false;
+//     try {
+//       // Start transaction
+//       await db.run("BEGIN TRANSACTION");
+//       transactionStarted = true;
+//       req.log.info("Transaction started successfully");
   
-      const result = await db.run(
-        "INSERT INTO orders (date, time) VALUES (?, ?)",
-        [date, time]
-      );
-      const orderId = result.lastID;
-      req.log.info("Order created with ID:", orderId);
+//       const result = await db.run(
+//         "INSERT INTO orders (date, time) VALUES (?, ?)",
+//         [date, time]
+//       );
+//       const orderId = result.lastInsertRowid;
+//       req.log.info(`Order created with ID: ${orderId}`);
   
-      const mergedCart = cart.reduce((acc, item) => {
-        const id = item.pizza.id;
-        const size = item.size.toLowerCase();
-        if (!id || !size) {
-          throw new Error("Invalid item data");
-        }
-        const pizzaId = `${id}_${size}`;
+//       // Log the cart before processing
+//       req.log.info(`Processing cart: ${JSON.stringify(cart, null, 2)}`);
   
-        if (!acc[pizzaId]) {
-          acc[pizzaId] = { pizzaId, quantity: 1 };
-        } else {
-          acc[pizzaId].quantity += 1;
-        }
+//       const mergedCart = cart.reduce((acc, item) => {
+//         const id = item.pizza.id;
+//         const size = item.size.toLowerCase();
+//         if (!id || !size) {
+//           throw new Error("Invalid item data");
+//         }
+//         const pizzaId = `${id}_${size}`;
+
+//         req.log.info(`Processing item - pizzaId: ${pizzaId}, id: ${id}, size: ${size}`);
   
-        return acc;
-      }, {});
+//         if (!acc[pizzaId]) {
+//           acc[pizzaId] = { pizzaId, quantity: 1 };
+//           req.log.info(`New item added to accumulator: ${pizzaId}`);
+//         } else {
+//           acc[pizzaId].quantity += 1;
+//           req.log.info(`Updated quantity for ${pizzaId}: ${acc[pizzaId].quantity}`);
+//         }
+        
+//         // Log the current state of the accumulator
+//         req.log.info(`Current accumulator state: ${JSON.stringify(acc, null, 2)}`);
+//         return acc;
+//       }, {});
   
-      for (const item of Object.values(mergedCart)) {
-        const { pizzaId, quantity } = item;
-        await db.run(
-          "INSERT INTO order_details (order_id, pizza_id, quantity) VALUES (?, ?, ?)",
-          [orderId, pizzaId, quantity]
-        );
-      }
+//       // Log the final merged cart
+//       req.log.info(`Final merged cart: ${JSON.stringify(mergedCart, null, 2)}`);
   
-      await db.run("COMMIT");
-      transactionStarted = false;
-      req.log.info("Transaction committed successfully");
+//       // Process each item in the merged cart
+//       for (const item of Object.values(mergedCart)) {
+//         const { pizzaId, quantity } = item;
+//         req.log.info(`Inserting order detail - orderId: ${orderId}, pizzaId: ${pizzaId}, quantity: ${quantity}`);
+//         await db.run(
+//           "INSERT INTO order_details (order_id, pizza_id, quantity) VALUES (?, ?, ?)",
+//           [orderId, pizzaId, quantity]
+//         );
+//       }
   
-      res.send({ orderId });
-    } catch (error) {
-      req.log.error({
-        error: error.message,
-        stack: error.stack,
-        transactionStarted,
-        cart: cart
-      });
+//       if (!transactionStarted) {
+//         throw new Error("Transaction was not active before commit");
+//       }
       
-      if (transactionStarted) {
-        try {
-          await db.run("ROLLBACK");
-          req.log.info("Transaction rolled back successfully");
-        } catch (rollbackError) {
-          req.log.error("Failed to rollback transaction:", rollbackError);
-        }
+//       await db.run("COMMIT");
+//       transactionStarted = false;
+//       req.log.info("Transaction committed successfully");
+  
+//       res.send({ orderId });
+//     } catch (error) {
+//       req.log.error({
+//         error: error.message,
+//         stack: error.stack,
+//         transactionStarted,
+//         cart: JSON.stringify(cart, null, 2),
+//         mergedCart: mergedCart ? JSON.stringify(mergedCart, null, 2) : 'not created'
+//       });
+      
+//       if (transactionStarted) {
+//         try {
+//           req.log.info("Attempting to rollback transaction...");
+//           await db.run("ROLLBACK");
+//           req.log.info("Transaction rolled back successfully");
+//         } catch (rollbackError) {
+//           req.log.error("Failed to rollback transaction:", rollbackError);
+//         }
+//       } else {
+//         req.log.error("No transaction was active, skipping rollback");
+//       }
+      
+//       res.status(500).send({ 
+//         error: "Failed to create order",
+//         details: error.message 
+//       });
+//     }
+// });
+
+app.post("/api/order", async function createOrder(req, res) {
+  const { cart } = req.body;
+  let transactionStarted = false;
+  let mergedCart = null;
+  let orderId = null;
+
+  const now = new Date();
+  const time = now.toLocaleTimeString("en-US", { hour12: false });
+  const date = now.toISOString().split("T")[0];
+
+  if (!cart || !Array.isArray(cart) || cart.length === 0) {
+    res.status(400).send({ error: "Invalid order data" });
+    return;
+  }
+
+  try {
+    // Start transaction using Turso's transaction API
+    req.log.info("Starting transaction...");
+    const transaction = await turso.transaction();
+    transactionStarted = true;
+    req.log.info("Transaction started successfully");
+
+    // Use transaction.execute instead of db.run
+    const result = await transaction.execute({
+      sql: "INSERT INTO orders (date, time) VALUES (?, ?)",
+      args: [date, time]
+    });
+    orderId = Number(result.lastInsertRowid);
+    req.log.info(`Order created with ID: ${orderId}`);
+
+    mergedCart = cart.reduce((acc, item) => {
+      const id = item.pizza.id;
+      const size = item.size.toLowerCase();
+      if (!id || !size) {
+        throw new Error("Invalid item data");
       }
-      res.status(500).send({ 
-        error: "Failed to create order",
-        details: error.message 
+      const pizzaId = `${id}_${size}`;
+
+      if (!acc[pizzaId]) {
+        acc[pizzaId] = { pizzaId, quantity: 1 };
+      } else {
+        acc[pizzaId].quantity += 1;
+      }
+      return acc;
+    }, {});
+
+    // Process each item in the merged cart using transaction
+    for (const item of Object.values(mergedCart)) {
+      const { pizzaId, quantity } = item;
+      req.log.info(`Inserting order detail for order ${orderId}: ${ pizzaId, quantity }`);
+      await transaction.execute({
+        sql: "INSERT INTO order_details (order_id, pizza_id, quantity) VALUES (?, ?, ?)",
+        args: [orderId, pizzaId, quantity]
       });
     }
+
+    req.log.info("All order details inserted, committing transaction...");
+    await transaction.commit();
+    transactionStarted = false;
+    req.log.info("Transaction committed successfully");
+
+    res.send({ orderId });
+  } catch (error) {
+    req.log.error({
+      error: error.message,
+      stack: error.stack,
+      transactionStarted,
+      orderId,
+      cart: JSON.stringify(cart, null, 2),
+      mergedCart: mergedCart ? JSON.stringify(mergedCart, null, 2) : 'not created'
+    });
+    
+    if (transactionStarted) {
+      try {
+        req.log.info(`Rolling back transaction for order ${orderId}...`);
+        await transaction.rollback();
+        req.log.info("Transaction rolled back successfully");
+      } catch (rollbackError) {
+        req.log.error("Failed to rollback transaction:", rollbackError);
+      }
+    } else {
+      req.log.error("No transaction was active, skipping rollback");
+    }
+    
+    res.status(500).send({ 
+      error: "Failed to create order",
+      details: error.message 
+    });
+  }
 });
-
-  // app.post("/api/order", async function createOrder(req, res) {
-  //   const { cart } = req.body;
-  
-  //   const now = new Date();
-  //   const time = now.toLocaleTimeString("en-US", { hour12: false });
-  //   const date = now.toISOString().split("T")[0];
-  
-  //   if (!cart || !Array.isArray(cart) || cart.length === 0) {
-  //     res.status(400).send({ error: "Invalid order data" });
-  //     return;
-  //   }
-  //   try {
-  //     await db.run("BEGIN TRANSACTION");
-  
-  //     const result = await db.run(
-  //       "INSERT INTO orders (date, time) VALUES (?, ?)",
-  //       [date, time]
-  //     );
-  //     const orderId = result.lastID;
-  
-  //     const mergedCart = cart.reduce((acc, item) => {
-  //       const id = item.pizza.id;
-  //       const size = item.size.toLowerCase();
-  //       if (!id || !size) {
-  //         throw new Error("Invalid item data");
-  //       }
-  //       const pizzaId = `${id}_${size}`;
-  
-  //       if (!acc[pizzaId]) {
-  //         acc[pizzaId] = { pizzaId, quantity: 1 };
-  //       } else {
-  //         acc[pizzaId].quantity += 1;
-  //       }
-  
-  //       return acc;
-  //     }, {});
-  
-  //     for (const item of Object.values(mergedCart)) {
-  //       const { pizzaId, quantity } = item;
-  //       await db.run(
-  //         "INSERT INTO order_details (order_id, pizza_id, quantity) VALUES (?, ?, ?)",
-  //         [orderId, pizzaId, quantity]
-  //       );
-  //     }
-  
-  //     await db.run("COMMIT");
-  
-  //     res.send({ orderId });
-  //   } catch (error) {
-  //     req.log.error(error);
-  //     await db.run("ROLLBACK");
-  //     res.status(500).send({ error: "Failed to create order" });
-  //   }
-  // });
-
 
   app.get("/api/past-orders", async function getPastOrders(req, res) {
     await new Promise((resolve) => setTimeout(resolve, 5000));
