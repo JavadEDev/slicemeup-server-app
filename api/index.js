@@ -4,7 +4,9 @@ import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@libsql/client';
-import 'pino-pretty';            
+import fastifyCors from '@fastify/cors';
+import 'pino-pretty';
+import fs from 'fs';
 
 const app = fastify({
   logger: {
@@ -14,20 +16,34 @@ const app = fastify({
 
 app.register(fastifyCors, {
   origin: [
-    'https://pizza-front-sooty.vercel.app', 
-    'http://localhost:5173', 
+    'https://pizza-front-sooty.vercel.app', // Your frontend Vercel URL
+    'https://pizza-server-iota.vercel.app/',
+    'http://localhost:5173', // Your local development URL
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 86400 
 });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
-app.register(fastifyStatic, {
-  root:   path.join(__dirname, 'public'),
-  prefix: '/public/',
-});
+try {
+  const publicPath = path.join(__dirname, 'public');
+  if (fs.existsSync(publicPath)) {
+    app.register(fastifyStatic, {
+      root: publicPath,
+      prefix: '/public/',
+      decorateReply: false,
+    });
+  } else {
+    app.log.warn('Public directory not found, static file serving disabled');
+  }
+} catch (error) {
+  app.log.error('Error setting up static file serving:', error);
+}
 
 const turso = createClient({
   url:       process.env.TURSO_DATABASE_URL,
@@ -40,9 +56,16 @@ const db = {
   run: async (sql, args = []) =>  turso.execute({ sql, args }),
 };
 
-
 app.get('/', async (req, res) => {
-  return res.status(200).type('text/html').send(html)
+  return res.status(200).send({
+    status: 'SliceMeUp API is live',
+    version: '1.0.0',
+    endpoints: {
+      pizzas: '/api/pizzas',
+      order: '/api/order',
+      pastOrders: '/api/past-orders'
+    }
+  });
 })
 app.get('/api', () => ({ status: 'SliceMeUp API is live' }));
 
@@ -157,7 +180,6 @@ app.get("/api/orders", async function getOrders(req, res) {
     const { cart } = req.body;
   
     const now = new Date();
-    // forgive me Date gods, for I have sinned
     const time = now.toLocaleTimeString("en-US", { hour12: false });
     const date = now.toISOString().split("T")[0];
   
@@ -165,15 +187,20 @@ app.get("/api/orders", async function getOrders(req, res) {
       res.status(400).send({ error: "Invalid order data" });
       return;
     }
-  
+
+    let transactionStarted = false;
     try {
+      // Start transaction
       await db.run("BEGIN TRANSACTION");
+      transactionStarted = true;
+      req.log.info("Transaction started successfully");
   
       const result = await db.run(
         "INSERT INTO orders (date, time) VALUES (?, ?)",
         [date, time]
       );
       const orderId = result.lastID;
+      req.log.info("Order created with ID:", orderId);
   
       const mergedCart = cart.reduce((acc, item) => {
         const id = item.pizza.id;
@@ -201,15 +228,89 @@ app.get("/api/orders", async function getOrders(req, res) {
       }
   
       await db.run("COMMIT");
+      transactionStarted = false;
+      req.log.info("Transaction committed successfully");
   
       res.send({ orderId });
     } catch (error) {
-      req.log.error(error);
-      await db.run("ROLLBACK");
-      res.status(500).send({ error: "Failed to create order" });
+      req.log.error({
+        error: error.message,
+        stack: error.stack,
+        transactionStarted,
+        cart: cart
+      });
+      
+      if (transactionStarted) {
+        try {
+          await db.run("ROLLBACK");
+          req.log.info("Transaction rolled back successfully");
+        } catch (rollbackError) {
+          req.log.error("Failed to rollback transaction:", rollbackError);
+        }
+      }
+      res.status(500).send({ 
+        error: "Failed to create order",
+        details: error.message 
+      });
     }
-  });
+});
+
+  // app.post("/api/order", async function createOrder(req, res) {
+  //   const { cart } = req.body;
   
+  //   const now = new Date();
+  //   const time = now.toLocaleTimeString("en-US", { hour12: false });
+  //   const date = now.toISOString().split("T")[0];
+  
+  //   if (!cart || !Array.isArray(cart) || cart.length === 0) {
+  //     res.status(400).send({ error: "Invalid order data" });
+  //     return;
+  //   }
+  //   try {
+  //     await db.run("BEGIN TRANSACTION");
+  
+  //     const result = await db.run(
+  //       "INSERT INTO orders (date, time) VALUES (?, ?)",
+  //       [date, time]
+  //     );
+  //     const orderId = result.lastID;
+  
+  //     const mergedCart = cart.reduce((acc, item) => {
+  //       const id = item.pizza.id;
+  //       const size = item.size.toLowerCase();
+  //       if (!id || !size) {
+  //         throw new Error("Invalid item data");
+  //       }
+  //       const pizzaId = `${id}_${size}`;
+  
+  //       if (!acc[pizzaId]) {
+  //         acc[pizzaId] = { pizzaId, quantity: 1 };
+  //       } else {
+  //         acc[pizzaId].quantity += 1;
+  //       }
+  
+  //       return acc;
+  //     }, {});
+  
+  //     for (const item of Object.values(mergedCart)) {
+  //       const { pizzaId, quantity } = item;
+  //       await db.run(
+  //         "INSERT INTO order_details (order_id, pizza_id, quantity) VALUES (?, ?, ?)",
+  //         [orderId, pizzaId, quantity]
+  //       );
+  //     }
+  
+  //     await db.run("COMMIT");
+  
+  //     res.send({ orderId });
+  //   } catch (error) {
+  //     req.log.error(error);
+  //     await db.run("ROLLBACK");
+  //     res.status(500).send({ error: "Failed to create order" });
+  //   }
+  // });
+
+
   app.get("/api/past-orders", async function getPastOrders(req, res) {
     await new Promise((resolve) => setTimeout(resolve, 5000));
     try {
